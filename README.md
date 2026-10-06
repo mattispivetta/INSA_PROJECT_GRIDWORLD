@@ -48,6 +48,7 @@ sprites are embedded, so no separate asset download is needed.
 
 ## Contributors
 Justin Tropis
+Chloé Mañas
 
 ## Credits
 
