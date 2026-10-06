@@ -29,7 +29,11 @@ class JsonState(TypedDict):
 
 class Renderer(Protocol):
     def start(self) -> None: ...
-    def update_render(self, json_state: JsonState) -> None: ...
+    
+    def update_render(self, json_state: JsonState) -> None: 
+        txt = self.state_to_sting(json_state)
+        self.refresh(txt)
+        
     def close(self) -> None: ...
 
 class InputSource(Protocol):
