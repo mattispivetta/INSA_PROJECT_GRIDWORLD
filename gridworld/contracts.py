@@ -28,13 +28,13 @@ class JsonState(TypedDict):
     extras: dict[str, object]  # JSON values only; empty in the base S0 game.
 
 class Renderer(Protocol):
-    def start(self) -> None: ...
+    def start(self) -> None: pass
     
     def update_render(self, json_state: JsonState) -> None: 
         txt = self.state_to_sting(json_state)
         self.refresh(txt)
         
-    def close(self) -> None: ...
+    def close(self) -> None: pass
 
 class InputSource(Protocol):
     """Read a raw key without translating it into an Action or applying game rules."""
