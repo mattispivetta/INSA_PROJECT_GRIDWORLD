@@ -51,6 +51,7 @@ sprites are embedded, so no separate asset download is needed.
 Eve 
 Justin Tropis
 Chloé Mañas
+Mattis Pivetta
 
 ## Credits
 
