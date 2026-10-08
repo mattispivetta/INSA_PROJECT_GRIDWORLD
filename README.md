@@ -51,6 +51,7 @@ Marie Portal
 Eve 
 Justin Tropis
 Chloé Mañas
+Mattis Pivetta
 
 ## Credits
 
