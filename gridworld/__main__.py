@@ -5,6 +5,10 @@ import argparse
 from gridworld.engine import Engine
 from gridworld.controllers.controller import Controller
 from gridworld.models.level import Level
+from gridworld.controllers.terminal_input import TerminalInput
+from gridworld.controllers.pygame_input import PygameInput
+from gridworld.views.bash_render import BashRender 
+from gridworld.views.pygame_render import PygameRender
 
 
 def main() -> None:
