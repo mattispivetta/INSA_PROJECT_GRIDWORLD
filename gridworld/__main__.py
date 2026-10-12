@@ -3,8 +3,8 @@ import argparse
 
 
 from gridworld.engine import Engine
-from gridworld.controller import Controller
-from gridworld.level import Level
+from gridworld.controllers.controller import Controller
+from gridworld.models.level import Level
 
 
 def main() -> None:
@@ -17,7 +17,7 @@ def main() -> None:
     # TODO: load Level, select InputSource and Renderer, then create Controller and Engine.
     # Start the renderer, call engine.run(), and close it in a finally block.
     
-    level = Level.from_file(args.level)
+    level = Level.load(args.level)
     if args.render == "pygame":
         renderer = PygameRender()
         input_source = PygameInput(renderer) 
