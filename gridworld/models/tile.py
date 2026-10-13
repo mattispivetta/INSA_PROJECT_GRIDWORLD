@@ -25,15 +25,19 @@ class Tile:
     """Terrain without player or rendering logic."""
 
     def __init__(self, kind: TileKind) -> None:
-        if kind not in _VALID_KINDS:
-            raise ValueError(f"unknown tile kind: {kind!r}")
-        self._kind = kind
+        if kind not in ("floor", "wall", "exit"):
+            raise ValueError(f"Unknown tile kind: {kind!r}")
+
+        self._kind: TileKind = kind
 
     def is_walkable(self) -> bool:
-        return self._kind != "wall"
+        """Return whether this tile can be crossed."""
+        return self._kind in ("floor", "exit")
 
     def is_exit(self) -> bool:
+        """Return whether this tile is an exit."""
         return self._kind == "exit"
 
     def to_state(self) -> TileKind:
+        """Return the terrain kind."""
         return self._kind
