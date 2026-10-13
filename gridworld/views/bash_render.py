@@ -10,11 +10,51 @@ class BashRender:
         raise NotImplementedError("initialize the terminal view")
 
     def start(self) -> None:
-        raise NotImplementedError("start the view; a no-op is acceptable")
-
+        raise NotImplementedError("initialize any resources or instance attributes")
+    
     def state_to_string(self, json_state: JsonState) -> str:
-        raise NotImplementedError("floor=., wall=#, exit=E; entities in order (player=P, unknown=?); turn and message, without print")
+        level = json_state["level"]
+        tiles = level["tiles"]
 
+        # Convertir le terrain en caractères
+        symbols = {
+            "floor": ".",
+            "wall": "#",
+            "exit": "E",
+        }
+
+        # Créer une grille indépendante de l'état original
+        grid = [
+            [symbols.get(tile, "?") for tile in row]
+            for row in tiles
+        ]
+
+        # Superposer les entités dans l'ordre fourni
+        for entity in json_state["entities"]:
+            x = entity["x"]
+            y = entity["y"]
+
+            if entity["id"] == json_state["player_id"]:
+                appearance = "P"
+            else:
+                appearance = entity["appearance"]
+
+                # Les apparences inconnues sont représentées par ?
+                if appearance not in ("floor", "wall", "exit", "player"):
+                    appearance = "?"
+
+            if 0 <= y < len(grid) and 0 <= x < len(grid[y]):
+                grid[y][x] = appearance
+
+        # Transformer la grille en texte
+        lines = ["".join(row) for row in grid]
+
+        # Ajouter le numéro du tour et le message
+        lines.append(f"Turn: {json_state['turn']}")
+        lines.append(json_state["message"])
+
+        return "\n".join(lines)
+    
     def refresh(self, text: str) -> None:
         """SUPPLIED: replace the ANSI terminal display without adding print calls.
 
