@@ -47,7 +47,12 @@ show the resulting state.
 sprites are embedded, so no separate asset download is needed.
 
 ## Contributors
+Marie Portal
+Eve 
 Justin Tropis
+Chloé Mañas
+Mattis Pivetta
+Marius Rorive
 
 ## Credits
 
