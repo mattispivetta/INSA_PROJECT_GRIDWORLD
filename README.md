@@ -52,6 +52,7 @@ Eve
 Justin Tropis
 Chloé Mañas
 Mattis Pivetta
+Marius Rorive
 
 ## Credits
 
