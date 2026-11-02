@@ -47,11 +47,13 @@ show the resulting state.
 sprites are embedded, so no separate asset download is needed.
 
 ## Contributors
-
+Marie Portal
 Eve 
 Justin Tropis
 Chloé Mañas
 Oscar Schuler Ruiz
+Mattis Pivetta
+
 
 ## Credits
 
