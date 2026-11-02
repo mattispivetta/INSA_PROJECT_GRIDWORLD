@@ -7,10 +7,10 @@ class BashRender:
     """To complete. Only refresh is supplied and must remain unchanged."""
 
     def __init__(self) -> None:
-        raise NotImplementedError("initialize the terminal view")
+        pass
 
     def start(self) -> None:
-        raise NotImplementedError("initialize any resources or instance attributes")
+        pass
     
     def state_to_string(self, json_state: JsonState) -> str:
         level = json_state["level"]
@@ -18,41 +18,43 @@ class BashRender:
 
         # Convertir le terrain en caractères
         symbols = {
-            "floor": ".",
-            "wall": "#",
-            "exit": "E",
+        "floor": ".",
+        "wall": "#",
+        "exit": "E"
         }
 
-        # Créer une grille indépendante de l'état original
-        grid = [
-            [symbols.get(tile, "?") for tile in row]
-            for row in tiles
-        ]
+        # Créer une copie de la grille sous forme de caractères
+        grid = []
+        for row in tiles:
+            new_row = []
+            for tile in row:
+                new_row.append(symbols.get(tile, "?"))
+            grid.append(new_row)
 
-        # Superposer les entités dans l'ordre fourni
+        # Ajouter les entités sur la grille
         for entity in json_state["entities"]:
             x = entity["x"]
             y = entity["y"]
 
             if entity["id"] == json_state["player_id"]:
-                appearance = "P"
+                symbol = "P"
             else:
-                appearance = entity["appearance"]
+                symbol = "?"
 
-                # Les apparences inconnues sont représentées par ?
-                if appearance not in ("floor", "wall", "exit", "player"):
-                    appearance = "?"
-
+            # Vérifier que les coordonnées sont dans la grille
             if 0 <= y < len(grid) and 0 <= x < len(grid[y]):
-                grid[y][x] = appearance
+                grid[y][x] = symbol
 
-        # Transformer la grille en texte
-        lines = ["".join(row) for row in grid]
+        # Convertir chaque ligne en chaîne de caractères
+        lines = []
+        for row in grid:
+            lines.append("".join(row))
 
         # Ajouter le numéro du tour et le message
         lines.append(f"Turn: {json_state['turn']}")
         lines.append(json_state["message"])
 
+        # Renvoyer le résultat sans afficher directement
         return "\n".join(lines)
     
     def refresh(self, text: str) -> None:
@@ -71,4 +73,4 @@ class BashRender:
         raise NotImplementedError("call state_to_string then refresh, once each")
 
     def close(self) -> None:
-        raise NotImplementedError("close idempotently; a no-op is acceptable")
+        pass
