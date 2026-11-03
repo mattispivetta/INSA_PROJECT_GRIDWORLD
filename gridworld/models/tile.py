@@ -16,8 +16,9 @@
 #     def to_state(self) -> TileKind:
 #         raise NotImplementedError("expose the terrain kind")
 
-
 from gridworld.contracts import TileKind
+
+_VALID_KINDS = ("floor", "wall", "exit")
 
 
 class Tile:
