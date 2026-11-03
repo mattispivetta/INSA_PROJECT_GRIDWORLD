@@ -70,7 +70,8 @@ class BashRender:
         sys.stdout.flush()
 
     def update_render(self, json_state: JsonState) -> None:
-        raise NotImplementedError("call state_to_string then refresh, once each")
+        text = self.state_to_string(json_state)
+        self.refresh(text)
 
     def close(self) -> None:
         pass
