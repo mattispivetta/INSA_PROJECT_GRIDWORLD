@@ -22,6 +22,7 @@ VALID = {
     "id": "test-level",
     "grid": [
         "#####",
+        "#...#",
         "#.#.#",
         "#...#",
         "#####",
@@ -74,7 +75,7 @@ def test_n0_dimensions_and_positions():
     assert level.to_state()["height"] == 5
     assert level.to_state()["width"] == 7
     # La case (6, 4) doit donc exister.
-    assert level.get_tile(6, 4) == "wall"
+    assert level.get_tile(6, 4).to_state() == "wall"
 
     # La colonne 7 est en dehors de la grille.
     with pytest.raises(IndexError):
@@ -245,9 +246,9 @@ def test_malformed_json_raises_level_error(tmp_path):
 # def test_invalid_level_data_raises_error(invalid_data):
 #     with pytest.raises(LevelError):
 #         Level(invalid_data)
-def test_invalid_level_data_raises_level_error(changes):
+def test_invalid_level_data_raises_level_error(invalid_data):
     data = copy.deepcopy(VALID)
-    data.update(changes)
+    data.update(invalid_data)
 
     with pytest.raises(LevelError):
         Level(data)
