@@ -46,6 +46,13 @@ show the resulting state.
 `PygameRender`, `PygameInput` and `BashRender.refresh` are supplied. The Pygame
 sprites are embedded, so no separate asset download is needed.
 
+## Tests
+
+Pour exécuter la suite de tests automatisée :
+\`\`\`bash
+uv run python -m pytest -q
+\`\`\`
+
 ## Contributors
 Marie Portal
 Eve 
