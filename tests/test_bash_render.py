@@ -1,5 +1,5 @@
 import pytest
-from gridworld.views.bash_render import state_to_string
+from gridworld.views.bash_render import BashRender
 from gridworld.engine import Engine
 from gridworld.models.level import Level
 
@@ -7,7 +7,7 @@ def test_rendu_fct_state_to_string(donnee):
     level=Level(donnee)
     state=level.get_state()
 
-    rendered=state_to_string(state)
+    rendered=BashRender().state_to_string(state)
 
     assert f"Turn: {state['turn']}" in rendered
     assert state['message'] in rendered
