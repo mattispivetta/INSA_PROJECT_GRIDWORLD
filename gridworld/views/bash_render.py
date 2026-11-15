@@ -7,14 +7,56 @@ class BashRender:
     """To complete. Only refresh is supplied and must remain unchanged."""
 
     def __init__(self) -> None:
-        raise NotImplementedError("initialize the terminal view")
+        pass
 
     def start(self) -> None:
-        raise NotImplementedError("start the view; a no-op is acceptable")
-
+        pass
+    
     def state_to_string(self, json_state: JsonState) -> str:
-        raise NotImplementedError("floor=., wall=#, exit=E; entities in order (player=P, unknown=?); turn and message, without print")
+        level = json_state["level"]
+        tiles = level["tiles"]
 
+        # Convertir le terrain en caractères
+        symbols = {
+        "floor": ".",
+        "wall": "#",
+        "exit": "E"
+        }
+
+        # Créer une copie de la grille sous forme de caractères
+        grid = []
+        for row in tiles:
+            new_row = []
+            for tile in row:
+                new_row.append(symbols.get(tile, "?"))
+            grid.append(new_row)
+
+        # Ajouter les entités sur la grille
+        for entity in json_state["entities"]:
+            x = entity["x"]
+            y = entity["y"]
+
+            if entity["id"] == json_state["player_id"]:
+                symbol = "P"
+            else:
+                symbol = "?"
+
+            # Vérifier que les coordonnées sont dans la grille
+            if 0 <= y < len(grid) and 0 <= x < len(grid[y]):
+                grid[y][x] = symbol
+
+        # Convertir chaque ligne en chaîne de caractères
+        lines = []
+        for row in grid:
+            lines.append("".join(row))
+
+        # Ajouter le numéro du tour et le message
+        lines.append(f"Turn: {json_state['turn']}")
+        lines.append(json_state["message"])
+
+        # Renvoyer le résultat sans afficher directement
+        return "\n".join(lines)
+    
     def refresh(self, text: str) -> None:
         """SUPPLIED: replace the ANSI terminal display without adding print calls.
 
@@ -28,7 +70,8 @@ class BashRender:
         sys.stdout.flush()
 
     def update_render(self, json_state: JsonState) -> None:
-        raise NotImplementedError("call state_to_string then refresh, once each")
+        text = self.state_to_string(json_state)
+        self.refresh(text)
 
     def close(self) -> None:
-        raise NotImplementedError("close idempotently; a no-op is acceptable")
+        pass

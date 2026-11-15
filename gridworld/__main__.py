@@ -5,6 +5,7 @@ import argparse
 from gridworld.engine import Engine
 from gridworld.controllers.controller import Controller
 from gridworld.models.level import Level
+
 from gridworld.controllers.terminal_input import TerminalInput
 from gridworld.controllers.pygame_input import PygameInput
 from gridworld.views.bash_render import BashRender 
@@ -25,7 +26,7 @@ def main() -> None:
     if args.render == "pygame":
         renderer = PygameRender()
         input_source = PygameInput(renderer) 
-
+    else :
         renderer = BashRender()
         input_source = TerminalInput()
 
