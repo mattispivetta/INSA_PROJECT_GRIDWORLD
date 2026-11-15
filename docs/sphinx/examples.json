@@ -1,0 +1,418 @@
+[
+  {
+    "name": "encounter",
+    "precondition": "Fresh sphinx game; one east move already applied (turn=1, revision=1).",
+    "request": {
+      "method": "POST",
+      "path": "/api/actions",
+      "headers": {"Content-Type": "application/json"},
+      "body": {"action": "east"}
+    },
+    "http_status": 200,
+    "response": {
+      "protocol_version": 1,
+      "session_id": "example-server",
+      "revision": 2,
+      "running": true,
+      "state": {
+        "level": {
+          "id": "sphinx",
+          "width": 7,
+          "height": 3,
+          "tiles": [
+            ["wall", "wall", "wall", "wall", "wall", "wall", "wall"],
+            ["wall", "floor", "floor", "floor", "floor", "exit", "wall"],
+            ["wall", "wall", "wall", "wall", "wall", "wall", "wall"]
+          ]
+        },
+        "entities": [
+          {"id": "player-1", "kind": "player", "x": 2, "y": 1, "appearance": "player"},
+          {"id": "sphinx-1", "kind": "sphinx", "x": 3, "y": 1, "appearance": "sphinx"}
+        ],
+        "player_id": "player-1",
+        "status": "playing",
+        "turn": 2,
+        "message": "",
+        "interaction": {
+          "id": "example-interaction-1",
+          "actor_id": "sphinx-1",
+          "status": "question",
+          "question": "What repeats your words without having a voice of its own?",
+          "message": ""
+        },
+        "extras": {}
+      }
+    }
+  },
+  {
+    "name": "branch_accepted_1_submit",
+    "precondition": "Following encounter (turn=2, revision=2, interaction.status='question').",
+    "request": {
+      "method": "POST",
+      "path": "/api/answer",
+      "headers": {"Content-Type": "application/json"},
+      "body": {
+        "interaction_id": "example-interaction-1",
+        "answer": "It is an echo."
+      }
+    },
+    "http_status": 202,
+    "response": {
+      "protocol_version": 1,
+      "session_id": "example-server",
+      "revision": 3,
+      "running": true,
+      "state": {
+        "level": {
+          "id": "sphinx",
+          "width": 7,
+          "height": 3,
+          "tiles": [
+            ["wall", "wall", "wall", "wall", "wall", "wall", "wall"],
+            ["wall", "floor", "floor", "floor", "floor", "exit", "wall"],
+            ["wall", "wall", "wall", "wall", "wall", "wall", "wall"]
+          ]
+        },
+        "entities": [
+          {"id": "player-1", "kind": "player", "x": 2, "y": 1, "appearance": "player"},
+          {"id": "sphinx-1", "kind": "sphinx", "x": 3, "y": 1, "appearance": "sphinx"}
+        ],
+        "player_id": "player-1",
+        "status": "playing",
+        "turn": 2,
+        "message": "",
+        "interaction": {
+          "id": "example-interaction-1",
+          "actor_id": "sphinx-1",
+          "status": "pending",
+          "question": "What repeats your words without having a voice of its own?",
+          "message": ""
+        },
+        "extras": {}
+      }
+    }
+  },
+  {
+    "name": "branch_accepted_2_verdict",
+    "precondition": "Following branch_accepted_1_submit (turn=2, revision=3); evaluator returned boolean true.",
+    "request": {
+      "method": "GET",
+      "path": "/api/state"
+    },
+    "http_status": 200,
+    "response": {
+      "protocol_version": 1,
+      "session_id": "example-server",
+      "revision": 4,
+      "running": true,
+      "state": {
+        "level": {
+          "id": "sphinx",
+          "width": 7,
+          "height": 3,
+          "tiles": [
+            ["wall", "wall", "wall", "wall", "wall", "wall", "wall"],
+            ["wall", "floor", "floor", "floor", "floor", "exit", "wall"],
+            ["wall", "wall", "wall", "wall", "wall", "wall", "wall"]
+          ]
+        },
+        "entities": [
+          {"id": "player-1", "kind": "player", "x": 2, "y": 1, "appearance": "player"},
+          {"id": "sphinx-1", "kind": "sphinx", "x": 3, "y": 1, "appearance": "sphinx"}
+        ],
+        "player_id": "player-1",
+        "status": "playing",
+        "turn": 2,
+        "message": "",
+        "interaction": {
+          "id": "example-interaction-1",
+          "actor_id": "sphinx-1",
+          "status": "accepted",
+          "question": "What repeats your words without having a voice of its own?",
+          "message": "The passage is open."
+        },
+        "extras": {}
+      }
+    }
+  },
+  {
+    "name": "branch_accepted_3_step_past_sphinx",
+    "precondition": "Following branch_accepted_2_verdict (turn=2, revision=4, interaction.status='accepted').",
+    "request": {
+      "method": "POST",
+      "path": "/api/actions",
+      "headers": {"Content-Type": "application/json"},
+      "body": {"action": "east"}
+    },
+    "http_status": 200,
+    "response": {
+      "protocol_version": 1,
+      "session_id": "example-server",
+      "revision": 5,
+      "running": true,
+      "state": {
+        "level": {
+          "id": "sphinx",
+          "width": 7,
+          "height": 3,
+          "tiles": [
+            ["wall", "wall", "wall", "wall", "wall", "wall", "wall"],
+            ["wall", "floor", "floor", "floor", "floor", "exit", "wall"],
+            ["wall", "wall", "wall", "wall", "wall", "wall", "wall"]
+          ]
+        },
+        "entities": [
+          {"id": "player-1", "kind": "player", "x": 3, "y": 1, "appearance": "player"},
+          {"id": "sphinx-1", "kind": "sphinx", "x": 3, "y": 1, "appearance": "sphinx"}
+        ],
+        "player_id": "player-1",
+        "status": "playing",
+        "turn": 3,
+        "message": "",
+        "interaction": null,
+        "extras": {}
+      }
+    }
+  },
+  {
+    "name": "branch_accepted_4_victory",
+    "precondition": "Following two more east moves (player at x=4, y=1, turn=4, revision=6).",
+    "request": {
+      "method": "POST",
+      "path": "/api/actions",
+      "headers": {"Content-Type": "application/json"},
+      "body": {"action": "east"}
+    },
+    "http_status": 200,
+    "response": {
+      "protocol_version": 1,
+      "session_id": "example-server",
+      "revision": 7,
+      "running": true,
+      "state": {
+        "level": {
+          "id": "sphinx",
+          "width": 7,
+          "height": 3,
+          "tiles": [
+            ["wall", "wall", "wall", "wall", "wall", "wall", "wall"],
+            ["wall", "floor", "floor", "floor", "floor", "exit", "wall"],
+            ["wall", "wall", "wall", "wall", "wall", "wall", "wall"]
+          ]
+        },
+        "entities": [
+          {"id": "player-1", "kind": "player", "x": 5, "y": 1, "appearance": "player"},
+          {"id": "sphinx-1", "kind": "sphinx", "x": 3, "y": 1, "appearance": "sphinx"}
+        ],
+        "player_id": "player-1",
+        "status": "won",
+        "turn": 5,
+        "message": "Victory!",
+        "interaction": null,
+        "extras": {}
+      }
+    }
+  },
+  {
+    "name": "branch_rejected_verdict",
+    "precondition": "Alternative branch from encounter (turn=2, revision=2): player submitted 'A shadow' (202 at rev=3) and evaluator returned boolean false.",
+    "request": {
+      "method": "GET",
+      "path": "/api/state"
+    },
+    "http_status": 200,
+    "response": {
+      "protocol_version": 1,
+      "session_id": "example-server",
+      "revision": 4,
+      "running": true,
+      "state": {
+        "level": {
+          "id": "sphinx",
+          "width": 7,
+          "height": 3,
+          "tiles": [
+            ["wall", "wall", "wall", "wall", "wall", "wall", "wall"],
+            ["wall", "floor", "floor", "floor", "floor", "exit", "wall"],
+            ["wall", "wall", "wall", "wall", "wall", "wall", "wall"]
+          ]
+        },
+        "entities": [
+          {"id": "player-1", "kind": "player", "x": 2, "y": 1, "appearance": "player"},
+          {"id": "sphinx-1", "kind": "sphinx", "x": 3, "y": 1, "appearance": "sphinx"}
+        ],
+        "player_id": "player-1",
+        "status": "playing",
+        "turn": 2,
+        "message": "",
+        "interaction": {
+          "id": "example-interaction-1",
+          "actor_id": "sphinx-1",
+          "status": "rejected",
+          "question": "What repeats your words without having a voice of its own?",
+          "message": "That answer was not accepted. Try again."
+        },
+        "extras": {}
+      }
+    }
+  },
+  {
+    "name": "branch_technical_error",
+    "precondition": "Alternative branch from encounter (turn=2, revision=2): answer submitted (202 at rev=3), then evaluator timed out or returned malformed payload.",
+    "request": {
+      "method": "GET",
+      "path": "/api/state"
+    },
+    "http_status": 200,
+    "response": {
+      "protocol_version": 1,
+      "session_id": "example-server",
+      "revision": 4,
+      "running": true,
+      "state": {
+        "level": {
+          "id": "sphinx",
+          "width": 7,
+          "height": 3,
+          "tiles": [
+            ["wall", "wall", "wall", "wall", "wall", "wall", "wall"],
+            ["wall", "floor", "floor", "floor", "floor", "exit", "wall"],
+            ["wall", "wall", "wall", "wall", "wall", "wall", "wall"]
+          ]
+        },
+        "entities": [
+          {"id": "player-1", "kind": "player", "x": 2, "y": 1, "appearance": "player"},
+          {"id": "sphinx-1", "kind": "sphinx", "x": 3, "y": 1, "appearance": "sphinx"}
+        ],
+        "player_id": "player-1",
+        "status": "playing",
+        "turn": 2,
+        "message": "",
+        "interaction": {
+          "id": "example-interaction-1",
+          "actor_id": "sphinx-1",
+          "status": "error",
+          "question": "What repeats your words without having a voice of its own?",
+          "message": "The evaluator is unavailable. Try again."
+        },
+        "extras": {}
+      }
+    }
+  },
+  {
+    "name": "branch_cancel_1_during_pending",
+    "precondition": "Alternative branch during evaluation (turn=2, revision=3, interaction.status='pending').",
+    "request": {
+      "method": "POST",
+      "path": "/api/cancel",
+      "headers": {"Content-Type": "application/json"},
+      "body": {"interaction_id": "example-interaction-1"}
+    },
+    "http_status": 200,
+    "response": {
+      "protocol_version": 1,
+      "session_id": "example-server",
+      "revision": 4,
+      "running": true,
+      "state": {
+        "level": {
+          "id": "sphinx",
+          "width": 7,
+          "height": 3,
+          "tiles": [
+            ["wall", "wall", "wall", "wall", "wall", "wall", "wall"],
+            ["wall", "floor", "floor", "floor", "floor", "exit", "wall"],
+            ["wall", "wall", "wall", "wall", "wall", "wall", "wall"]
+          ]
+        },
+        "entities": [
+          {"id": "player-1", "kind": "player", "x": 2, "y": 1, "appearance": "player"},
+          {"id": "sphinx-1", "kind": "sphinx", "x": 3, "y": 1, "appearance": "sphinx"}
+        ],
+        "player_id": "player-1",
+        "status": "playing",
+        "turn": 2,
+        "message": "",
+        "interaction": null,
+        "extras": {}
+      }
+    }
+  },
+  {
+    "name": "branch_cancel_2_late_verdict_ignored",
+    "precondition": "Following branch_cancel_1_during_pending (turn=2, revision=4); background evaluator finished late with boolean true but its token is stale.",
+    "request": {
+      "method": "GET",
+      "path": "/api/state"
+    },
+    "http_status": 200,
+    "response": {
+      "protocol_version": 1,
+      "session_id": "example-server",
+      "revision": 4,
+      "running": true,
+      "state": {
+        "level": {
+          "id": "sphinx",
+          "width": 7,
+          "height": 3,
+          "tiles": [
+            ["wall", "wall", "wall", "wall", "wall", "wall", "wall"],
+            ["wall", "floor", "floor", "floor", "floor", "exit", "wall"],
+            ["wall", "wall", "wall", "wall", "wall", "wall", "wall"]
+          ]
+        },
+        "entities": [
+          {"id": "player-1", "kind": "player", "x": 2, "y": 1, "appearance": "player"},
+          {"id": "sphinx-1", "kind": "sphinx", "x": 3, "y": 1, "appearance": "sphinx"}
+        ],
+        "player_id": "player-1",
+        "status": "playing",
+        "turn": 2,
+        "message": "",
+        "interaction": null,
+        "extras": {}
+      }
+    }
+  },
+  {
+    "name": "error_invalid_request_empty_answer",
+    "precondition": "Active interaction in 'question' status (turn=2, revision=2).",
+    "request": {
+      "method": "POST",
+      "path": "/api/answer",
+      "headers": {"Content-Type": "application/json"},
+      "body": {
+        "interaction_id": "example-interaction-1",
+        "answer": "   "
+      }
+    },
+    "http_status": 422,
+    "response": {
+      "error": {
+        "code": "invalid_request",
+        "message": "Answer must be between 1 and 500 non-whitespace characters."
+      }
+    }
+  },
+  {
+    "name": "error_evaluation_pending",
+    "precondition": "An evaluation is already in progress (turn=2, revision=3, interaction.status='pending').",
+    "request": {
+      "method": "POST",
+      "path": "/api/answer",
+      "headers": {"Content-Type": "application/json"},
+      "body": {
+        "interaction_id": "example-interaction-1",
+        "answer": "An echo"
+      }
+    },
+    "http_status": 409,
+    "response": {
+      "error": {
+        "code": "evaluation_pending",
+        "message": "An evaluation is already in progress for this interaction."
+      }
+    }
+  }
+]
