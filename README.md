@@ -60,6 +60,7 @@ Justin Tropis
 Chloé Mañas
 Oscar Schuler Ruiz
 Mattis Pivetta
+Marius Rorive
 
 
 ## Credits
