@@ -2,6 +2,10 @@ import pytest
 from gridworld.contracts import InputSource, JsonState, Renderer
 from gridworld.models.level import Level
 
+from gridworld.engine import Engine
+from gridworld.controllers.controller import Controller
+
+
 
 class FakeInputSource:
     """Source d'entrée simulée consommant une séquence de touches.
@@ -91,3 +95,14 @@ def make_input_source():
 def recording_renderer() -> RecordingRenderer:
     """Fixture fournissant un RecordingRenderer vierge."""
     return RecordingRenderer()
+
+@pytest.fixture
+def nv_level(fresh_level, make_input_source, recording_renderer):
+    input_source = make_input_source([])
+    controller = Controller(input_source)
+
+    return Engine(
+        level=fresh_level,
+        controller=controller,
+        renderer=recording_renderer
+    )
