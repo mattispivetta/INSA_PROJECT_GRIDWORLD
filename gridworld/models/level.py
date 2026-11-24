@@ -1,6 +1,6 @@
 from gridworld.contracts import LevelState
 from gridworld.models.tile import Tile
-
+import copy 
 
 # class LevelError(ValueError):
 #     """JSON loading error or violation of the map contract."""

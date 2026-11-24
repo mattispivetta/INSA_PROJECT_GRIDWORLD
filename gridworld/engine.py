@@ -32,20 +32,20 @@ class Engine:
         self.status = "playing"
         self.message = ""
         self.sphinx = self.level.get_sphinx()
-    if self.sphinx is None:
-        self.riddle = None
-        self.passage_open = True
-    else:
-        r = self.sphinx["riddle"]
-        self.riddle = Riddle(
-            id=r["id"],
-            question=r["question"],
-            expected_answer=r["expected_answer"],
-        )
-        self.passage_open = False
-    self.interaction = None
-    self._eval_token = None   # jeton de l'évaluation en cours (privé, jamais exposé)   # dict public tant qu'un dialogue est actif, sinon None
-        #raise NotImplementedError("initialize the game without rendering or starting the view")
+        if self.sphinx is None:
+            self.riddle = None
+            self.passage_open = True
+        else:
+            r = self.sphinx["riddle"]
+            self.riddle = Riddle(
+                id=r["id"],
+                question=r["question"],
+                expected_answer=r["expected_answer"],
+            )
+            self.passage_open = False
+        self.interaction = None
+        self._eval_token = None   # jeton de l'évaluation en cours (privé, jamais exposé)   # dict public tant qu'un dialogue est actif, sinon None
+            #raise NotImplementedError("initialize the game without rendering or starting the view")
 
     def get_action(self) -> Action | None:
         return self.controller.get_action()
