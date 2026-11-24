@@ -38,11 +38,6 @@ def main() -> None:
         engine.run()
     finally :
         renderer.close()
-    
-    raise NotImplementedError(
-        f"assemble the game ({args.render}, {args.level}). "
-        "To check the supplied files: uv run python -m gridworld.views.pygame_render"
-    )
 
 
 if __name__ == "__main__":
