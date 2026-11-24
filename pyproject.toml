@@ -13,6 +13,13 @@ package = false
 
 [dependency-groups]
 dev = [
-    "pytest>=9.2.0"
-
+    "pytest>=9.2.0",
+    "ruff>=0.17.6",
 ]
+
+# Copy these sections into pyproject.toml; keep its other sections.
+[tool.ruff]
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["F821", "F401", "F841"]

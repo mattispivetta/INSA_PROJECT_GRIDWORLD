@@ -42,7 +42,6 @@
 # assert action=="north"
 # assert compteur_lecture==1
 
-import pytest
 from gridworld.controllers.controller import Controller
 
 

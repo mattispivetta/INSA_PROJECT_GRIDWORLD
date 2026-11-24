@@ -1,7 +1,6 @@
 """Manual CPU evaluation entry point; never invoked by pytest."""
 
 import argparse
-from dataclasses import asdict
 import json
 import os
 from pathlib import Path

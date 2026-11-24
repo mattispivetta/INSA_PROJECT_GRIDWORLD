@@ -1,5 +1,5 @@
 import pytest
-from gridworld.contracts import InputSource, JsonState, Renderer
+from gridworld.contracts import JsonState
 from gridworld.models.level import Level
 
 from gridworld.engine import Engine
