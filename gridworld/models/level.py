@@ -35,7 +35,7 @@ from gridworld.models.tile import Tile
 import json
 from pathlib import Path
 
-
+PLAYER_ID = "player-1"
 class LevelError(ValueError):
     """JSON loading error or violation of the map contract."""
 
@@ -139,6 +139,10 @@ class Level:
         self._start = start
         self._exit = exit_pos
         self._grid = grid
+        self._sphinx = None
+        raw_sphinx = data.get("sphinx")
+        if raw_sphinx is not None:
+            self._sphinx = self._validate_sphinx(raw_sphinx)
 
     @classmethod
     def load(cls, path: str) -> "Level":
@@ -202,3 +206,46 @@ class Level:
                 for row in self._grid
             ],
         }
+    def _validate_sphinx(self, raw: object) -> dict:
+        if not isinstance(raw, dict):
+            raise LevelError("sphinx must be an object")
+
+        def text(container: dict, name: str, where: str) -> str:
+            value = container.get(name)
+            if not isinstance(value, str) or not value.strip():
+                raise LevelError(f"{where}.{name} must be a non-blank string")
+            return value
+
+        sphinx_id = text(raw, "id", "sphinx")
+        if sphinx_id == PLAYER_ID:
+            raise LevelError("sphinx.id must differ from the player id")
+        text(raw, "kind", "sphinx")
+        text(raw, "appearance", "sphinx")
+
+        if "theme" in raw:                       # facultatif
+            text(raw, "theme", "sphinx")
+
+        x, y = raw.get("x"), raw.get("y")
+        if (
+            not isinstance(x, int) or isinstance(x, bool)
+            or not isinstance(y, int) or isinstance(y, bool)
+        ):
+            raise LevelError("sphinx.x and sphinx.y must be integers")
+        if not self.is_walkable(x, y):
+            raise LevelError("sphinx must stand on a floor tile")
+        if (x, y) == self.get_start():
+            raise LevelError("sphinx cannot stand on the start tile")
+        if self.is_exit(x, y):
+            raise LevelError("sphinx cannot stand on the exit tile")
+
+        riddle = raw.get("riddle")
+        if not isinstance(riddle, dict):
+            raise LevelError("sphinx.riddle must be an object")
+        for name in ("id", "question", "expected_answer"):
+            text(riddle, name, "sphinx.riddle")
+
+        return copy.deepcopy(raw)
+
+    def get_sphinx(self) -> dict | None:
+        """Private sphinx data (includes the reference answer). Engine only."""
+        return None if self._sphinx is None else copy.deepcopy(self._sphinx)

@@ -1,209 +1,233 @@
-
-import argparse
-from threading import Lock
-from uuid import uuid4
 import json
+import threading
+import time
+from pathlib import Path
 
-from flask import Flask, Response, request
+import pytest
 
 from gridworld.controllers.controller import Controller
-from gridworld.controllers.terminal_input import TerminalInput
-from gridworld.engine import Engine
+from gridworld.engine import DialogueError, Engine
 from gridworld.models.level import Level
-from gridworld.views.bash_render import BashRender
+from gridworld.sphinx_service import (
+    FakeSphinxService,
+    ServiceError,
+    Verdict,
+)
+
+ROOT = Path(__file__).resolve().parent.parent
 
 
-def json_response(data: dict, status: int = 200) -> Response:
-    """Encode JSON and disable caching."""
-    dumped = json.dumps(data, allow_nan=False)
-    resp = Response(dumped, status=status, mimetype="application/json")
-    resp.headers["Cache-Control"] = "no-store"
-    return resp
+class NoInput:
+    def read_key(self):
+        return None
 
 
-def error_response(status: int, code: str, message: str) -> Response:
-    return json_response(
-        {"error": {"code": code, "message": message}},
-        status,
-    )
+class NoRender:
+    def start(self): pass
+    def update_render(self, state): pass
+    def close(self): pass
 
 
-def create_app(engine: Engine | None) -> Flask:
-    """Build an HTTP application around one shared game."""
-    app = Flask(__name__)
-
-    lock = Lock()
-    session_id = uuid4().hex
-    revision = 0
-    running = engine is not None
-
-    def state_frame() -> dict:
-        """Build the StateFrame. Call while holding the lock."""
-        if engine is None:
-            return {}
-
-        state = engine.get_state()
-
-        return {
-            "state": state,
-            "running": running,
-            "session_id": session_id,
-            "revision": revision,
-            "protocol_version": 1,
-        }
-
-    @app.get("/api/state")
-    def get_state() -> Response:
-        with lock:
-            if engine is None:
-                return error_response(
-                    503,
-                    "engine_unavailable",
-                    "The game engine is unavailable",
-                )
-
-            return json_response(state_frame())
-
-    @app.post("/api/actions")
-    def post_action() -> Response:
-        nonlocal revision, running
-
-        # 1. Check Content-Type
-        if not request.is_json:
-            return error_response(
-                415,
-                "unsupported_media_type",
-                "Content-Type must be application/json",
-            )
-
-        # 2. Read JSON
-        body = request.get_json(silent=True)
-
-        if not isinstance(body, dict):
-            return error_response(
-                400,
-                "bad_request",
-                "Request body must be a JSON object",
-            )
-
-        # 3. Check the exact body structure
-        if set(body.keys()) != {"action"}:
-            return error_response(
-                422,
-                "invalid_action",
-                "Request must contain exactly one action field",
-            )
-
-        action = body["action"]
-
-        # 4. Check action type
-        if not isinstance(action, str):
-            return error_response(
-                422,
-                "invalid_action",
-                "Action must be a string",
-            )
-
-        # 5. Check allowed actions
-        allowed_actions = {
-            "north",
-            "south",
-            "east",
-            "west",
-            "wait",
-            "quit",
-        }
-
-        if action not in allowed_actions:
-            return error_response(
-                422,
-                "invalid_action",
-                "Unknown action",
-            )
-
-        # 6. All game operations are protected by the lock
-        with lock:
-            if engine is None:
-                return error_response(
-                    503,
-                    "engine_unavailable",
-                    "The game engine is unavailable",
-                )
-
-            if not running:
-                return error_response(
-                    409,
-                    "conflict",
-                    "The game is no longer running",
-                )
-
-            state_before = engine.get_state()
-
-            # Check whether the engine has already ended the game
-            if state_before.get("status") in ("won", "lost", "quit"):
-                running = False
-                revision += 1
-                return error_response(
-                    409,
-                    "conflict",
-                    "The game is already over",
-                )
-
-            # Explicit quit: no game turn is consumed
-            if action == "quit":
-                running = False
-                revision += 1
-                return json_response(state_frame())
-
-            # Normal action
-            engine.apply_action(action)
-
-            state_after = engine.get_state()
-
-            # The game stops after victory or defeat
-            if state_after.get("status") in ("won", "lost", "quit"):
-                running = False
-
-            revision += 1
-
-            return json_response(state_frame())
-
-    @app.errorhandler(500)
-    def internal_error(error) -> Response:
-        return error_response(
-            500,
-            "internal_error",
-            "The server could not process the request",
-        )
-
-    return app
+def make_engine(path):
+    level = Level.load(str(ROOT / path))
+    return Engine(level, Controller(NoInput()), NoRender())
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Serve the Gridworld HTTP API"
-    )
-    parser.add_argument("--level", default="levels/n0.json")
-    parser.add_argument("--port", type=int, default=8000)
-    args = parser.parse_args()
-
-    level = Level.load(args.level)
-
-    engine = Engine(
-        level,
-        Controller(TerminalInput()),
-        BashRender(),
-    )
-
-    app = create_app(engine)
-
-    app.run(
-        host="127.0.0.1",
-        port=args.port,
-        debug=False,
-        threaded=True,
-    )
+def open_dialogue(engine):
+    engine.apply_action("east")
+    engine.apply_action("east")
+    return engine.get_state()["interaction"]["id"]
 
 
-if __name__ == "__main__":
-    main()
+def judge_like_api(engine, service, iid, answer="an echo"):
+    riddle, text, token = engine.begin_answer(iid, answer)
+    try:
+        verdict = service.judge(riddle, text)
+    except ServiceError:
+        verdict = None
+    return engine.finish_evaluation(token, verdict)
+
+
+# ---------- Étape 1 ----------
+
+def test_sphinx_is_visible_without_secret():
+    engine = make_engine("levels/sphinx.json")
+    state = engine.get_state()
+    sphinxes = [e for e in state["entities"] if e["kind"] == "sphinx"]
+    assert len(sphinxes) == 1
+    assert (sphinxes[0]["x"], sphinxes[0]["y"]) == (3, 1)
+    assert state["entities"][-1]["id"] == state["player_id"]
+    assert state["interaction"] is None
+    raw = json.dumps(state)
+    assert "expected_answer" not in raw
+    assert "riddle" not in raw
+    assert engine.riddle.expected_answer not in raw
+
+
+def test_n0_is_unchanged():
+    state = make_engine("levels/n0.json").get_state()
+    assert state["extras"] == {}
+    assert all(e["kind"] != "sphinx" for e in state["entities"])
+
+
+# ---------- Étape 2 ----------
+
+def test_encounter_opens_dialogue_and_freezes_moves():
+    engine = make_engine("levels/sphinx.json")
+    engine.apply_action("east")
+    engine.apply_action("east")
+    state = engine.get_state()
+    player = state["entities"][-1]
+    assert (player["x"], player["y"]) == (2, 1)
+    assert state["turn"] == 2
+    it = state["interaction"]
+    assert set(it) == {"id", "actor_id", "status", "question", "message"}
+    assert it["status"] == "question"
+    for action in ("east", "west", "north", "south", "wait"):
+        engine.apply_action(action)
+        assert engine.get_state() == state
+
+
+# ---------- Étape 3 ----------
+
+def test_begin_answer_goes_pending_without_changing_turn():
+    engine = make_engine("levels/sphinx.json")
+    iid = open_dialogue(engine)
+    engine.begin_answer(iid, "It is an echo.")
+    state = engine.get_state()
+    assert state["interaction"]["status"] == "pending"
+    assert state["turn"] == 2
+
+
+def test_second_answer_while_pending_is_refused():
+    engine = make_engine("levels/sphinx.json")
+    iid = open_dialogue(engine)
+    engine.begin_answer(iid, "one")
+    with pytest.raises(DialogueError) as exc:
+        engine.begin_answer(iid, "two")
+    assert exc.value.code == "evaluation_pending"
+
+
+def test_wrong_interaction_id_is_stale():
+    engine = make_engine("levels/sphinx.json")
+    open_dialogue(engine)
+    with pytest.raises(DialogueError) as exc:
+        engine.begin_answer("not-the-id", "x")
+    assert exc.value.code == "stale_interaction"
+
+
+def test_stale_token_is_ignored():
+    engine = make_engine("levels/sphinx.json")
+    iid = open_dialogue(engine)
+    engine.begin_answer(iid, "x")
+    assert engine.finish_evaluation("old-token", Verdict(True, "x")) is False
+    assert engine.get_state()["interaction"]["status"] == "pending"
+
+
+# ---------- Étape 4 ----------
+
+@pytest.mark.parametrize("outcome, status, message", [
+    ("accepted", "accepted", "The passage is open."),
+    ("rejected", "rejected", "That answer was not accepted. Try again."),
+    ("timeout", "error", "The evaluator is unavailable. Try again."),
+    ("unavailable", "error", "The evaluator is unavailable. Try again."),
+    ("invalid", "error", "The evaluator is unavailable. Try again."),
+])
+def test_outcomes_give_fixed_public_messages(outcome, status, message):
+    engine = make_engine("levels/sphinx.json")
+    iid = open_dialogue(engine)
+    assert judge_like_api(engine, FakeSphinxService(outcome), iid) is True
+    state = engine.get_state()
+    assert state["interaction"]["status"] == status
+    assert state["interaction"]["message"] == message
+    assert state["turn"] == 2
+    assert "Fake" not in json.dumps(state)
+    assert engine.passage_open is (status == "accepted")
+
+
+@pytest.mark.parametrize("outcome", ["rejected", "timeout", "unavailable", "invalid"])
+def test_retry_after_refusal_or_failure_keeps_question(outcome):
+    engine = make_engine("levels/sphinx.json")
+    iid = open_dialogue(engine)
+    question = engine.get_state()["interaction"]["question"]
+    judge_like_api(engine, FakeSphinxService(outcome), iid)
+    engine.apply_action("east")
+    assert engine.get_state()["turn"] == 2
+    judge_like_api(engine, FakeSphinxService("accepted"), iid)
+    it = engine.get_state()["interaction"]
+    assert it["status"] == "accepted"
+    assert it["question"] == question
+
+
+def test_string_false_is_not_a_valid_verdict():
+    engine = make_engine("levels/sphinx.json")
+    iid = open_dialogue(engine)
+    _, _, token = engine.begin_answer(iid, "x")
+    engine.finish_evaluation(token, Verdict("false", "x"))
+    assert engine.get_state()["interaction"]["status"] == "error"
+    assert engine.passage_open is False
+
+
+def test_accepted_then_three_east_reaches_victory():
+    engine = make_engine("levels/sphinx.json")
+    iid = open_dialogue(engine)
+    judge_like_api(engine, FakeSphinxService("accepted"), iid)
+    engine.apply_action("east")
+    state = engine.get_state()
+    assert state["interaction"] is None
+    assert (state["entities"][-1]["x"], state["entities"][-1]["y"]) == (3, 1)
+    assert state["turn"] == 3
+    engine.apply_action("east")
+    engine.apply_action("east")
+    state = engine.get_state()
+    assert state["turn"] == 5
+    assert state["status"] == "won"
+    assert state["message"] == "Victory!"
+
+
+# ---------- Étape 5 ----------
+
+def test_cancel_closes_dialogue_and_keeps_passage_closed():
+    engine = make_engine("levels/sphinx.json")
+    iid = open_dialogue(engine)
+    engine.cancel(iid)
+    state = engine.get_state()
+    assert state["interaction"] is None
+    assert engine.passage_open is False
+    assert state["turn"] == 2
+
+
+def test_stale_verdict_after_cancel_and_new_encounter_is_ignored():
+    engine = make_engine("levels/sphinx.json")
+    old_iid = open_dialogue(engine)
+    _, _, old_token = engine.begin_answer(old_iid, "an echo")
+    engine.cancel(old_iid)
+    engine.apply_action("east")
+    before = engine.get_state()
+    assert before["interaction"]["id"] != old_iid
+    assert before["interaction"]["status"] == "question"
+    assert engine.finish_evaluation(old_token, Verdict(True, "x")) is False
+    assert engine.get_state() == before
+    assert engine.passage_open is False
+
+
+def test_quit_invalidates_pending_evaluation():
+    engine = make_engine("levels/sphinx.json")
+    iid = open_dialogue(engine)
+    _, _, token = engine.begin_answer(iid, "an echo")
+    engine.apply_action("quit")
+    assert engine.get_state()["interaction"] is None
+    assert engine.finish_evaluation(token, Verdict(True, "x")) is False
+    assert engine.passage_open is False
+
+
+def test_cancel_with_wrong_id_or_after_acceptance_is_refused():
+    engine = make_engine("levels/sphinx.json")
+    iid = open_dialogue(engine)
+    with pytest.raises(DialogueError) as exc:
+        engine.cancel("not-the-id")
+    assert exc.value.code == "stale_interaction"
+    judge_like_api(engine, FakeSphinxService("accepted"), iid)
+    with pytest.raises(DialogueError) as exc:
+        engine.cancel(iid)
+    assert exc.value.code == "interaction_complete"
