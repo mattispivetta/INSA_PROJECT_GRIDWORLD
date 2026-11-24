@@ -1,151 +1,100 @@
-# tests/test_launcher.py
+import json
 import sys
 
 import pytest
 
-import gridworld.__main__ as launcher
-
-
-class Recorder:
-    """Garde la trace de ce que le lanceur crée et de l'ordre des appels."""
-
-    def __init__(self):
-        self.events = []          # "start", "run", "close" dans l'ordre
-        self.created = []         # noms des composants instanciés
-        self.level_paths = []     # chemins passés à Level.load
-        self.engines = []         # moteurs créés
-        self.renderers = []
-        self.inputs = []
-        self.run_error = None     # exception que engine.run() doit lever
+from gridworld import __main__ as launcher
+from gridworld.controllers import pygame_input
+from gridworld.views import pygame_render
+from tests.helpers import RecordingRenderer, ScriptedInput
 
 
 @pytest.fixture
-def rec(monkeypatch):
-    r = Recorder()
+def components(monkeypatch):
+    renderers = {"terminal": RecordingRenderer(), "pygame": RecordingRenderer()}
+    inputs = []
 
-    class FakeRenderer:
-        name = "?"
+    def terminal_source():
+        inputs.append("terminal")
+        return ScriptedInput([":quit"])
 
-        def __init__(self):
-            r.created.append(self.name)
-            r.renderers.append(self)
+    def pygame_source(renderer):
+        assert renderer is renderers["pygame"]
+        inputs.append("pygame")
+        return ScriptedInput([":quit"])
 
-        def start(self):
-            r.events.append("start")
-
-        def update_render(self, json_state):
-            pass
-
-        def close(self):
-            r.events.append("close")
-
-    class FakeBashRender(FakeRenderer):
-        name = "BashRender"
-
-    class FakePygameRender(FakeRenderer):
-        name = "PygameRender"
-
-    class FakeTerminalInput:
-        def __init__(self):
-            r.created.append("TerminalInput")
-            r.inputs.append(self)
-
-        def read_key(self):
-            raise AssertionError("le test ne doit pas lire le clavier")
-
-    class FakePygameInput:
-        def __init__(self, renderer):
-            r.created.append("PygameInput")
-            r.inputs.append(self)
-            self.renderer = renderer
-
-        def read_key(self):
-            raise AssertionError("le test ne doit pas lire le clavier")
-
-    class FakeLevel:
-        @classmethod
-        def load(cls, path):
-            r.level_paths.append(path)
-            return cls()
-
-    class FakeEngine:
-        def __init__(self, level, controller, renderer):
-            self.level = level
-            self.controller = controller
-            self.renderer = renderer
-            r.engines.append(self)
-
-        def run(self):
-            r.events.append("run")
-            if r.run_error is not None:
-                raise r.run_error
-
-    monkeypatch.setattr(launcher, "BashRender", FakeBashRender)
-    monkeypatch.setattr(launcher, "PygameRender", FakePygameRender)
-    monkeypatch.setattr(launcher, "TerminalInput", FakeTerminalInput)
-    monkeypatch.setattr(launcher, "PygameInput", FakePygameInput)
-    monkeypatch.setattr(launcher, "Level", FakeLevel)
-    monkeypatch.setattr(launcher, "Engine", FakeEngine)
-    return r
+    # Replace both constructors before main can open a window or read input.
+    monkeypatch.setattr(launcher, "BashRender", lambda: renderers["terminal"])
+    monkeypatch.setattr(launcher, "TerminalInput", terminal_source)
+    monkeypatch.setattr(pygame_render, "PygameRender", lambda: renderers["pygame"])
+    monkeypatch.setattr(pygame_input, "PygameInput", pygame_source)
+    return renderers, inputs
 
 
-def run_main(monkeypatch, *args):
-    monkeypatch.setattr(sys, "argv", ["gridworld", *args])
+@pytest.mark.parametrize("arguments, mode", [
+    ([], "terminal"), (["--render", "terminal"], "terminal"),
+    (["--render", "pygame"], "pygame"),
+])
+def test_renderer_selection_and_lifecycle(monkeypatch, components, arguments, mode):
+    renderers, inputs = components
+    monkeypatch.setattr(sys, "argv", ["gridworld"] + arguments)
     launcher.main()
+    assert inputs == [mode]
+    assert renderers[mode].events == ["start", "render", "close"]
+    assert renderers[mode].states[0]["level"]["id"] == "n0"
+    other_mode = "pygame" if mode == "terminal" else "terminal"
+    assert renderers[other_mode].events == []
 
 
-def test_no_argument_selects_terminal_mode(rec, monkeypatch):
-    run_main(monkeypatch)
-    assert rec.created == ["BashRender", "TerminalInput"] or \
-        sorted(rec.created) == ["BashRender", "TerminalInput"]
-    assert "PygameRender" not in rec.created
-    assert "PygameInput" not in rec.created
+def test_selected_level(monkeypatch, components, tmp_path, level_data):
+    renderers, inputs = components
+    level_data["id"] = "selected"
+    level_data["start"] = {"x": 0, "y": 0}
+    path = tmp_path / "selected.json"
+    path.write_text(json.dumps(level_data), encoding="utf-8")
+    monkeypatch.setattr(sys, "argv", ["gridworld", "--level", str(path)])
+    launcher.main()
+    state = renderers["terminal"].states[0]
+    assert state["level"]["id"] == "selected"
+    assert (state["entities"][0]["x"], state["entities"][0]["y"]) == (0, 0)
 
 
-def test_render_terminal_selects_terminal_components(rec, monkeypatch):
-    run_main(monkeypatch, "--render", "terminal")
-    assert sorted(rec.created) == ["BashRender", "TerminalInput"]
-    assert rec.engines[0].renderer is rec.renderers[0]
-    assert rec.engines[0].controller._input_source is rec.inputs[0]
+def test_invalid_renderer_fails_before_startup(monkeypatch, components, capsys):
+    renderers, inputs = components
+    monkeypatch.setattr(sys, "argv", ["gridworld", "--render", "unknown"])
+    with pytest.raises(SystemExit) as error:
+        launcher.main()
+    assert error.value.code == 2
+    assert "invalid choice" in capsys.readouterr().err
+    assert inputs == []
+    assert all(renderer.events == [] for renderer in renderers.values())
 
 
-def test_render_pygame_selects_pygame_components(rec, monkeypatch):
-    run_main(monkeypatch, "--render", "pygame")
-    assert sorted(rec.created) == ["PygameInput", "PygameRender"]
-    assert "BashRender" not in rec.created
-    assert "TerminalInput" not in rec.created
-    # l'entrée pygame est reliée au renderer pygame
-    assert rec.inputs[0].renderer is rec.renderers[0]
-    assert rec.engines[0].renderer is rec.renderers[0]
+def test_help_lists_renderers(monkeypatch, components, capsys):
+    renderers, inputs = components
+    monkeypatch.setattr(sys, "argv", ["gridworld", "--help"])
+    with pytest.raises(SystemExit) as error:
+        launcher.main()
+    assert error.value.code == 0
+    output = capsys.readouterr().out
+    assert "--render {terminal,pygame}" in output
+    assert "--level" in output
+    assert inputs == []
+    assert all(renderer.events == [] for renderer in renderers.values())
 
 
-def test_default_level_is_n0(rec, monkeypatch):
-    run_main(monkeypatch)
-    assert rec.level_paths == ["levels/n0.json"]
+@pytest.mark.parametrize("mode", ["terminal", "pygame"])
+def test_renderer_closes_when_loop_fails(monkeypatch, components, mode):
+    renderers, inputs = components
+    renderer = renderers[mode]
 
+    def failing_run(engine):
+        assert renderer.events == ["start"]
+        raise RuntimeError("Game loop failed")
 
-def test_level_option_is_respected(rec, monkeypatch):
-    run_main(monkeypatch, "--level", "levels/custom.json")
-    assert rec.level_paths == ["levels/custom.json"]
-    assert rec.engines[0].level is not None
-
-
-def test_unsupported_renderer_is_rejected_before_startup(rec, monkeypatch):
-    with pytest.raises(SystemExit) as exc:
-        run_main(monkeypatch, "--render", "opengl")
-    assert exc.value.code != 0
-    assert rec.created == []
-    assert rec.level_paths == []
-    assert rec.events == []
-
-
-def test_renderer_starts_before_engine_and_closes_after(rec, monkeypatch):
-    run_main(monkeypatch)
-    assert rec.events == ["start", "run", "close"]
-
-
-def test_renderer_is_closed_even_if_loop_raises(rec, monkeypatch):
-    rec.run_error = RuntimeError("boom")
-    with pytest.raises(RuntimeError, match="boom"):
-        run_main(monkeypatch)
-    assert rec.events == ["start", "run", "close"]
+    monkeypatch.setattr(sys, "argv", ["gridworld", "--render", mode])
+    monkeypatch.setattr(launcher.Engine, "run", failing_run)
+    with pytest.raises(RuntimeError, match="Game loop failed"):
+        launcher.main()
+    assert inputs == [mode]
+    assert renderer.events == ["start", "close"]

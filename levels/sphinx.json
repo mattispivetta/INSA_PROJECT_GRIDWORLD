@@ -1,28 +1,7 @@
 {
   "id": "sphinx",
-  "grid": [
-    "#######",
-    "#.....#",
-    "#######"
-  ],
-  "start": {
-    "x": 1,
-    "y": 1
-  },
-  "exit": {
-    "x": 5,
-    "y": 1
-  },
-  "sphinx": {
-    "id": "sphinx-1",
-    "kind": "sphinx",
-    "appearance": "sphinx",
-    "x": 3,
-    "y": 1,
-    "riddle": {
-      "id": "echo",
-      "question": "I speak without a mouth and hear without ears. I have no body, but I come alive with wind. What am I?",
-      "expected_answer": "An echo"
-    }
-  }
+  "grid": ["#######", "#.....#", "#######"],
+  "start": {"x": 1, "y": 1},
+  "exit": {"x": 5, "y": 1},
+  "sphinx": true
 }

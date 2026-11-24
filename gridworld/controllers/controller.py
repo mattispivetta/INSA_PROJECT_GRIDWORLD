@@ -2,27 +2,26 @@ from gridworld.contracts import Action, InputSource
 
 
 class Controller:
-    """To implement. Read a key and translate it into an action."""
-
     def __init__(self, input_source: InputSource) -> None:
-        self._input_source = input_source
+        self.input_source = input_source
 
     def key_to_action(self, key: str) -> Action | None:
-        if key=="z" or key=="Z" or key=="ArrowUp":
+        if key in ("z", "Z", "ArrowUp"):
             return "north"
-        elif key=="s" or key=="S" or key=="ArrowDown":
-            return "south"
-        elif key=="q" or key=="Q" or key=="ArrowLeft":
-            return "west"
-        elif key=="d" or key=="D" or key=="ArrowRight":
+        if key in ("d", "D", "ArrowRight"):
             return "east"
-        elif key==" ":
+        if key in ("s", "S", "ArrowDown"):
+            return "south"
+        if key in ("q", "Q", "ArrowLeft"):
+            return "west"
+        if key == " ":
             return "wait"
-        elif key=="Escape" or key==":quit":
+        if key in ("Escape", ":quit"):
             return "quit"
-        else:
-            return None
+        return None
 
     def get_action(self) -> Action | None:
-        key = self._input_source.read_key()
+        key = self.input_source.read_key()
+        if key is None:
+            return None
         return self.key_to_action(key)

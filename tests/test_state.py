@@ -1,71 +1,66 @@
-# import json
-# import pytest
-
-# def test_etat_complet_et_json(nv_level):
-#     state=nv_level.get_state()
-
-#     required_keys = ["level", "entities", "player_id", "status", "turn", "message", "interaction", "extras"]
-#     for key in required_keys:
-#         assert key in state, f"Le champ obligatoire '{key}' est absent de l'état."
-        
-#     serialized = json.dumps(state)
-#     assert isinstance(serialized, str)
-#     deserialized = json.loads(serialized)
-#     assert deserialized["turn"] == state["turn"]
-
-# def test_lecture_state_avance_pas_jeu(nv_level):
-#     initial_turn = nv_level.get_state()["turn"]
-    
-#     for _ in range(5):
-#         current_state = nv_level.get_state()
-#         assert current_state["turn"] == initial_turn
-
-# def test_state_data_isolation(nv_level):
-#     state1 = nv_level.get_state()
-    
-#     state1["turn"] = 677
-#     state1["message"] = "Message modifié"
-    
-#     state2 = nv_level.get_state()
-    
-#     assert state2["turn"] != 677
-#     assert state2["message"] != "Message modifié"
-
+from copy import deepcopy
 import json
 
-def test_etat_complet_et_json(nv_level):
-    state = nv_level.get_state()
-
-    required_keys = [
-        "level", "entities", "player_id", "status",
-        "turn", "message", "interaction", "extras"
-    ]
-
-    for key in required_keys:
-        assert key in state, f"Le champ obligatoire '{key}' est absent de l'état."
-
-    serialized = json.dumps(state)
-    assert isinstance(serialized, str)
-
-    deserialized = json.loads(serialized)
-    assert deserialized["turn"] == state["turn"]
+import pytest
 
 
-def test_lecture_state_avance_pas_jeu(nv_level):
-    initial_turn = nv_level.get_state()["turn"]
+@pytest.mark.parametrize("action", ["north", None, "quit"])
+def test_engine_delegates_input_once(engine, monkeypatch, action):
+    calls = []
 
-    for _ in range(5):
-        current_state = nv_level.get_state()
-        assert current_state["turn"] == initial_turn
+    def get_action():
+        calls.append("read")
+        return action
+
+    monkeypatch.setattr(engine.controller, "get_action", get_action)
+    assert engine.get_action() == action
+    assert calls == ["read"]
 
 
-def test_state_data_isolation(nv_level):
-    state1 = nv_level.get_state()
+def test_engine_forwards_supplied_state_once(engine, renderer):
+    supplied = {"message": "a state supplied by the caller"}
+    engine.render(supplied)
+    assert len(renderer.states) == 1
+    assert renderer.states[0] is supplied
 
-    state1["turn"] = 677
-    state1["message"] = "Message modifié"
 
-    state2 = nv_level.get_state()
+def test_state_contract_and_read_only_access(engine, input_source, renderer):
+    state = engine.get_state()
+    assert set(state) == {"level", "entities", "player_id", "status", "turn", "message", "interaction", "extras"}
+    assert state["level"] == {
+        "id": "small", "width": 3, "height": 3,
+        "tiles": [["floor", "floor", "floor"], ["floor", "floor", "floor"], ["floor", "floor", "exit"]],
+    }
+    assert state["entities"] == [{"id": "player-1", "kind": "player", "appearance": "player", "x": 1, "y": 1}]
+    assert state["player_id"] == "player-1"
+    assert state["status"] == "playing"
+    assert state["turn"] == 0
+    assert state["message"] == ""
+    assert state["interaction"] is None
+    assert state["extras"] == {}
+    assert json.loads(json.dumps(state)) == state
+    assert engine.get_state() == state
+    assert input_source.reads == 0
+    assert renderer.states == []
 
-    assert state2["turn"] != 677
-    assert state2["message"] != "Message modifié"
+
+def test_nested_snapshots_are_independent(engine, level):
+    first = engine.get_state()
+    second = engine.get_state()
+    before = deepcopy(second)
+    first["level"]["tiles"][0][0] = "wall"
+    first["entities"][0]["x"] = 99
+    first["extras"]["note"] = ["changed"]
+    first["message"] = "changed"
+    model_state = level.to_state()
+    model_state["tiles"][1][1] = "wall"
+    assert engine.get_state() == before
+    assert second == before
+
+
+def test_old_snapshot_does_not_follow_movement(engine):
+    state = engine.get_state()
+    engine.apply_action("east")
+    assert state["entities"][0]["x"] == 1
+    assert state["turn"] == 0
+    assert engine.get_state()["entities"][0]["x"] == 2

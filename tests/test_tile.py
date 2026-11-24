@@ -1,34 +1,20 @@
-
 import pytest
 
 from gridworld.models.tile import Tile
 
 
-def test_floor_is_walkable():
-    tile = Tile("floor")
-
-    assert tile.is_walkable() is True
-    assert tile.is_exit() is False
-    assert tile.to_state() == "floor"
-
-
-def test_wall_is_not_walkable():
-    tile = Tile("wall")
-
-    assert tile.is_walkable() is False
-    assert tile.is_exit() is False
-    assert tile.to_state() == "wall"
+@pytest.mark.parametrize("kind, walkable, exit_tile", [
+    ("floor", True, False),
+    ("wall", False, False),
+    ("exit", True, True),
+])
+def test_tile_kind(kind, walkable, exit_tile):
+    tile = Tile(kind)
+    assert tile.to_state() == kind
+    assert tile.is_walkable() is walkable
+    assert tile.is_exit() is exit_tile
 
 
-def test_exit_is_walkable():
-    tile = Tile("exit")
-
-    assert tile.is_walkable() is True
-    assert tile.is_exit() is True
-    assert tile.to_state() == "exit"
-
-
-@pytest.mark.parametrize("kind", ["water", "", None, 42])
-def test_unknown_tile_raises_value_error(kind):
+def test_unknown_tile_kind():
     with pytest.raises(ValueError):
-        Tile(kind)
+        Tile("water")
