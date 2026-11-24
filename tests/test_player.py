@@ -1,4 +1,3 @@
-
 import pytest
 
 from gridworld.models.player import Player
